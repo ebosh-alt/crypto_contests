@@ -4,7 +4,6 @@ import telebot
 # from telebot import types
 # import re
 import datetime
-from datetime import timedelta
 import pickle
 
 # from multiprocessing import *
@@ -32,15 +31,21 @@ class Contest:
         self.time_start_contest = None
         self.time_end_contest = None
         self.time_start_registration = None
+
         self.time_end_registration = None
         self.time_end_for_new_user = None
         self.text_final = "Конкурс окончен"
+        self.photo_final = None
         self.text_announcement = "Начался конкурс"
+        self.photo_announcement = None
         self.text_for_new_leader = "Появился новый лидер"
+        self.photo_for_new_leader = None
         self.text_encouragement = "Поднажмите"
+        self.photo_encouragement = None
         self.time_inaction = None
         self.time_reminder = None
         self.text_reminder = "Идет конкурс"
+        self.photo_reminder = None
         self.max_transaction = 0
         self.stop_list = []
 
@@ -135,14 +140,13 @@ def other(message):
     user_id = message.from_user.id
     bot.send_message(chat_id=user_id,
                      text="Ваш профиль заблокирован в нашем сервисе")
-    save_object(contest, "contest.pkl")
+    # save_object(contest, "contest.pkl")
 
 
 @bot.message_handler(commands=["start"])
 def start(message):
     global users_bd, start_text
     user_id = message.from_user.id
-    print(user_id, message.from_user.username)
     if str(user_id) in contest.stop_list:
         users_bd.set_status(user_id)
         bot.send_message(chat_id=user_id,
@@ -162,16 +166,15 @@ def start(message):
         save_object(users_bd, "users_bd.pkl")
 
 
-@bot.message_handler(commands=["admin"])
+@bot.message_handler(commands=["admin"], func=lambda message: message.from_user.id in admin)
 def command_admin(message):
     global admin
     user_id = message.from_user.id
-    if user_id in admin:
-        r = bot.send_message(chat_id=user_id,
-                             text="Выберите действие",
-                             reply_markup=admin_start)
+    r = bot.send_message(chat_id=user_id,
+                         text="Выберите действие",
+                         reply_markup=admin_start)
 
-        users_bd.set_message_id(user_id, r.id)
+    users_bd.set_message_id(user_id, r.id)
 
 
 @bot.message_handler(commands=["reg"])
@@ -230,27 +233,82 @@ def call_reg(call):
                      func=lambda message: (message.from_user.id in admin) and
                                           (users_bd.get_flag(message.from_user.id) != 9))
 def work__admin(message):
-    global users_bd
+    global users_bd, contest
     user_id = message.from_user.id
     flag = users_bd.get_flag(user_id)
-    print(message)
-    file_info = bot.get_file(message.photo[len(message.photo) - 1].file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    src = message.photo[1].file_id
-    with open(src, 'wb') as new_file:
-        new_file.write(downloaded_file)
-    bot.reply_to(message, "Фото добавлено")
-    with open(src, 'rb') as f:
-        photo = f.read()
-    bot.send_photo(chat_id=user_id,
-                      photo=photo)
+    # file_info = bot.download_file(bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path)
+    # downloaded_file = bot.download_file(file_info.file_path)
+    # contest.photo = file_info
+
+    # bot.send_photo(chat_id=user_id,
+    #               photo=contest.photo)
     if flag in [11, 12, 13, 14, 15]:
         bot.delete_message(chat_id=user_id,
                            message_id=message.id)
-        bot.edit_message_text(chat_id=user_id,
-                              message_id=users_bd.get_message_id(user_id),
-                              text=f"Вы ввели: \n{message.text}",
-                              reply_markup=compete_or_change_new_text)
+        if message.photo is None:
+            bot.edit_message_text(chat_id=user_id,
+                                  message_id=users_bd.get_message_id(user_id),
+                                  text=f"Вы ввели: \n{message.text}",
+                                  reply_markup=complete_or_change_new_text)
+            if flag == 11:
+                contest.text_final = message.text
+
+            elif flag == 12:
+                contest.text_announcement = message.text
+
+            elif flag == 13:
+                contest.text_for_new_leader = message.text
+
+            elif flag == 14:
+                contest.text_final = message.text
+
+            elif flag == 15:
+                contest.text_reminder = message.text
+
+        else:
+            if flag == 11:
+                contest.photo_final = bot.download_file(
+                    bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path
+                )
+                bot.send_photo(chat_id=user_id,
+                               photo=contest.photo_final,
+                               caption=contest.text_final,
+                               reply_markup=complete_or_change_new_text2)
+            elif flag == 12:
+                contest.photo_announcement = bot.download_file(
+                    bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path
+                )
+                bot.send_photo(chat_id=user_id,
+                               photo=contest.photo_announcement,
+                               caption=contest.text_announcement,
+                               reply_markup=complete_or_change_new_text2)
+
+            elif flag == 13:
+                contest.photo_for_new_leader = bot.download_file(
+                    bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path
+                )
+                bot.send_photo(chat_id=user_id,
+                               photo=contest.photo_for_new_leader,
+                               caption=contest.text_for_new_leader,
+                               reply_markup=complete_or_change_new_text2)
+
+            elif flag == 14:
+                contest.photo_encouragement = bot.download_file(
+                    bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path
+                )
+                bot.send_photo(chat_id=user_id,
+                               photo=contest.photo_encouragement,
+                               caption=contest.text_encouragement,
+                               reply_markup=complete_or_change_new_text2)
+
+            elif flag == 15:
+                contest.photo_reminder = bot.download_file(
+                    bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path
+                )
+                bot.send_photo(chat_id=user_id,
+                               photo=contest.photo_reminder,
+                               caption=contest.text_reminder,
+                               reply_markup=complete_or_change_new_text2)
 
     if flag in [1, 2, 3, 4, 5, 6, 7, 8]:
         bot.delete_message(chat_id=user_id,
@@ -258,7 +316,7 @@ def work__admin(message):
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
                               text=f"Вы ввели: \n{message.text}",
-                              reply_markup=compete_or_change_contest)
+                              reply_markup=complete_or_change_contest)
 
     if flag == 10:
         bot.delete_message(chat_id=user_id,
@@ -524,28 +582,13 @@ def work_admin(call):
 
     elif call.data == "complete_new_text":
         try:
-            # load_object("contest.pkl")
-            flag = users_bd.get_flag(user_id)
-            new_text = call.message.text.split('\n')[1]
-
-            if flag == 11:
-                contest.text_final = new_text
-
-            elif flag == 12:
-                contest.text_announcement = new_text
-
-            elif flag == 13:
-                contest.text_for_new_leader = new_text
-
-            elif flag == 14:
-                contest.text_final = new_text
-
-            elif flag == 15:
-                contest.text_reminder = new_text
-
             bot.answer_callback_query(callback_query_id=call.id,
                                       text='Изменение прошло успешно',
                                       show_alert=True)
+            if len(call.message.reply_markup.keyboard) == 2:
+                bot.delete_message(chat_id=user_id,
+                                   message_id=call.message.id)
+
             bot.edit_message_text(chat_id=user_id,
                                   message_id=users_bd.get_message_id(user_id),
                                   text="Выберите действие",
@@ -554,7 +597,7 @@ def work_admin(call):
 
         except Exception as ex:
             bot.answer_callback_query(callback_query_id=call.id,
-                                      text='Произошла ошибка',
+                                      text='Произошла ошибка' + str(ex),
                                       show_alert=True)
         finally:
             save_object(contest, "contest.pkl")
@@ -592,7 +635,10 @@ def work_admin(call):
                               reply_markup=admin_start)
         users_bd.set_flag(user_id, 0)
 
-
+    elif call.data == "add_photo":
+        bot.edit_message_text(chat_id=user_id,
+                              message_id=users_bd.get_message_id(user_id),
+                              text="Отправьте фотографию")
 
     elif call.data == "back_in_admin_panel":
         bot.edit_message_text(chat_id=user_id,

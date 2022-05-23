@@ -22,12 +22,18 @@ back_in_change_text = types.InlineKeyboardMarkup(row_width=1).add(
     types.InlineKeyboardButton(text="назад", callback_data="change_text")
 )
 
-compete_or_change_new_text = types.InlineKeyboardMarkup(row_width=1).add(
+complete_or_change_new_text = types.InlineKeyboardMarkup(row_width=1).add(
+    types.InlineKeyboardButton(text="добавить фото", callback_data="add_photo"),
     types.InlineKeyboardButton(text="подтвердить", callback_data="complete_new_text"),
     types.InlineKeyboardButton(text="изменить", callback_data="change_introduced_text")
 )
 
-compete_or_change_contest = types.InlineKeyboardMarkup(row_width=1).add(
+complete_or_change_new_text2 = types.InlineKeyboardMarkup(row_width=1).add(
+    types.InlineKeyboardButton(text="подтвердить", callback_data="complete_new_text"),
+    types.InlineKeyboardButton(text="изменить", callback_data="change_introduced_text")
+)
+
+complete_or_change_contest = types.InlineKeyboardMarkup(row_width=1).add(
     types.InlineKeyboardButton(text="подтвердить", callback_data="complete_value_contest"),
     types.InlineKeyboardButton(text="изменить", callback_data="change_introduced_value_contest")
 )
