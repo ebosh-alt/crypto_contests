@@ -135,7 +135,7 @@ contest = load_object("contest.pkl")
 users_bd = load_object("users_bd.pkl")
 #print(users_bd.__dict__)
 start_text = "Вас приветствует xxx. Какое-то описание необходимо"
-admin = [5191469996, 2059338796]
+admin = [5191469996, 2059338796, 754513655]
 API_TOKEN = "5002199932:AAEGc9BEvAsIPF9ro4Ig1HaNmKAtTcmq8QA"
 bot = telebot.TeleBot(API_TOKEN)
 bot.delete_webhook()
@@ -401,6 +401,7 @@ def work__admin(message):
 def work_admin(call):
     global contest, data_text_for_create_contest
     user_id = call.from_user.id
+    flag = users_bd.get_flag(user_id)
 
     if call.data == "add_contest":
         users_bd.set_flag(user_id, 1)
@@ -411,14 +412,14 @@ def work_admin(call):
 
     elif call.data == "complete_value_contest":
         ###check maximum flag
-        flag = users_bd.get_flag(user_id)
 
         new_set = call.message.text.split('\n')[1]
         if flag == 1:
             contest.contract_number = new_set
             bot.edit_message_text(chat_id=user_id,
                                   message_id=users_bd.get_message_id(user_id),
-                                  text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                  text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                  reply_markup=back_keyboard_in_creating_contest)
             users_bd.set_flag(user_id, flag + 1)
 
         elif flag == 2:
@@ -434,7 +435,8 @@ def work_admin(call):
                     contest.time_start_contest = time_start
                     bot.edit_message_text(chat_id=user_id,
                                           message_id=users_bd.get_message_id(user_id),
-                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                          reply_markup=back_keyboard_in_creating_contest)
                     users_bd.set_flag(user_id, flag + 1)
 
                 except Exception as ex:
@@ -459,7 +461,8 @@ def work_admin(call):
 
                         bot.edit_message_text(chat_id=user_id,
                                               message_id=users_bd.get_message_id(user_id),
-                                              text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                              text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                              reply_markup=back_keyboard_in_creating_contest)
                         users_bd.set_flag(user_id, flag + 1)
                     else:
                         bot.edit_message_text(chat_id=user_id,
@@ -486,7 +489,8 @@ def work_admin(call):
 
                     bot.edit_message_text(chat_id=user_id,
                                           message_id=users_bd.get_message_id(user_id),
-                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                          reply_markup=back_keyboard_in_creating_contest)
                     users_bd.set_flag(user_id, flag + 1)
                 except Exception as ex:
                     bot.answer_callback_query(callback_query_id=call.id,
@@ -505,7 +509,8 @@ def work_admin(call):
                     contest.time_end_registration = new_set
                     bot.edit_message_text(chat_id=user_id,
                                           message_id=users_bd.get_message_id(user_id),
-                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                          reply_markup=back_keyboard_in_creating_contest)
                     users_bd.set_flag(user_id, flag + 1)
                 except Exception as ex:
                     bot.answer_callback_query(callback_query_id=call.id,
@@ -524,7 +529,8 @@ def work_admin(call):
                     contest.time_end_for_new_user = new_set
                     bot.edit_message_text(chat_id=user_id,
                                           message_id=users_bd.get_message_id(user_id),
-                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                          reply_markup=back_keyboard_in_creating_contest)
                     users_bd.set_flag(user_id, flag + 1)
                 except Exception as ex:
                     bot.answer_callback_query(callback_query_id=call.id,
@@ -541,7 +547,8 @@ def work_admin(call):
                     contest.time_inaction = int(new_set)
                     bot.edit_message_text(chat_id=user_id,
                                           message_id=users_bd.get_message_id(user_id),
-                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
+                                          text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1],
+                                          reply_markup=back_keyboard_in_creating_contest)
                     users_bd.set_flag(user_id, flag + 1)
                 except Exception as ex:
                     bot.answer_callback_query(callback_query_id=call.id,
@@ -594,6 +601,22 @@ def work_admin(call):
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
                               text=data_text_for_create_contest[users_bd.get_flag(user_id)])
+                            
+    elif call.data == "previous_lvl_in_creating_contest":
+        print(flag)
+        if flag == 1:
+            users_bd.set_flag(user_id, flag - 1)
+            bot.edit_message_text(chat_id=user_id,
+                                          message_id=users_bd.get_message_id(user_id),
+                                          text="Выберите действие",
+                                          reply_markup=admin_start)
+        else:
+            users_bd.set_flag(user_id, flag - 1)            
+            bot.edit_message_text(chat_id=user_id,
+                                  message_id=users_bd.get_message_id(user_id),
+                                  text=data_text_for_create_contest[users_bd.get_flag(user_id)],
+                                  reply_markup=back_keyboard_in_creating_contest)
+                    
 
     elif call.data == "change_text":
         bot.edit_message_text(chat_id=user_id,

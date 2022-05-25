@@ -36,7 +36,12 @@ complete_or_change_new_text2 = types.InlineKeyboardMarkup(row_width=1).add(
 
 complete_or_change_contest = types.InlineKeyboardMarkup(row_width=1).add(
     types.InlineKeyboardButton(text="подтвердить", callback_data="complete_value_contest"),
-    types.InlineKeyboardButton(text="изменить", callback_data="change_introduced_value_contest")
+    types.InlineKeyboardButton(text="изменить", callback_data="change_introduced_value_contest"),
+    types.InlineKeyboardButton(text="назад", callback_data="previous_lvl_in_creating_contest")
+)
+
+back_keyboard_in_creating_contest = types.InlineKeyboardMarkup(row_width=1).add(
+    types.InlineKeyboardButton(text="назад", callback_data="previous_lvl_in_creating_contest")
 )
 
 registration_for_contest = types.InlineKeyboardMarkup(row_width=1).add(
