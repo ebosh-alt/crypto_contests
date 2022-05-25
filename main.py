@@ -31,7 +31,6 @@ class Contest:
         self.time_start_contest = None
         self.time_end_contest = None
         self.time_start_registration = None
-
         self.time_end_registration = None
         self.time_end_for_new_user = None
         self.text_final = "Конкурс окончен"
@@ -47,7 +46,24 @@ class Contest:
         self.text_reminder = "Идет конкурс"
         self.photo_reminder = None
         self.max_transaction = 0
+        self.wallet_leader = None
+        self.username_leader = None
         self.stop_list = []
+
+    def variables_for_mes(self, value):
+        match value:
+            case "time_start_contest":
+                return self.time_start_contest
+            case "time_end_registration":
+                return self.time_end_registration
+            case "remaining_time_contest":
+                return self.time_end_registration - datetime.now()
+            case "remaining_time_registration":
+                return self.time_end_registration - datetime.now()
+            case "wallet_leader":
+                return self.wallet_leader
+            case "username_leader":
+                return self.username_leader
 
 
 class User:
@@ -82,10 +98,10 @@ class Users:
     def set_status_of_last_registration(self, id):
         self.data[id].status_of_last_registration = True
 
-    def set_status(self, id):
+    def set_status(self, id, value):
         if id not in self.data:
             self.data[id] = User()
-        self.data[id].status = False
+        self.data[id].status = value
 
     def get_status(self, id):
         return self.data[id].status
@@ -115,10 +131,11 @@ class Users:
         return wallet_list
 
 
-contest = Contest()
+contest = load_object("contest.pkl")
 users_bd = load_object("users_bd.pkl")
+#print(users_bd.__dict__)
 start_text = "Вас приветствует xxx. Какое-то описание необходимо"
-admin = [5191469996]
+admin = [5191469996, 2059338796]
 API_TOKEN = "5002199932:AAEGc9BEvAsIPF9ro4Ig1HaNmKAtTcmq8QA"
 bot = telebot.TeleBot(API_TOKEN)
 bot.delete_webhook()
@@ -133,8 +150,8 @@ data_text_for_create_contest = {1: 'введите номер контракта
                                 8: 'через сколько минут напоминать о том, что идет конкурс?(в минутах)'}
 
 
-@bot.message_handler(func=lambda message: message.from_user.id in users_bd.data and
-                                          not users_bd.get_status(message.from_user.id))
+@bot.message_handler(func=lambda message: message.from_user.id in users_bd.data and not users_bd.get_status(
+    message.from_user.id))
 def other(message):
     global users_bd
     user_id = message.from_user.id
@@ -145,8 +162,9 @@ def other(message):
 
 @bot.message_handler(commands=["start"])
 def start(message):
-    global users_bd, start_text
+    global users_bd
     user_id = message.from_user.id
+    #print(user_id)
     if str(user_id) in contest.stop_list:
         users_bd.set_status(user_id)
         bot.send_message(chat_id=user_id,
@@ -192,15 +210,14 @@ def reg(message):
 def reg_wallet(message):
     global users_bd, contest
     user_id = message.from_user.id
-
+    #print(users_bd.get_status_of_last_registration(user_id))
     if str(user_id) in contest.stop_list or message.text in contest.stop_list:
-        users_bd.set_status(user_id)
+        users_bd.set_status(user_id, False)
         bot.send_message(chat_id=user_id,
                          text="Ваш профиль заблокирован в нашем сервисе")
         save_object(contest, "contest.pkl")
 
-
-    elif users_bd.get_status_of_last_registration(user_id):
+    elif not users_bd.get_status_of_last_registration(user_id):
         users_bd.set_wallet(user_id, message.text)
         users_bd.set_status_of_last_registration(user_id)
         bot.edit_message_text(chat_id=user_id,
@@ -216,13 +233,14 @@ def reg_wallet(message):
 def call_reg(call):
     global users_bd
     user_id = call.from_user.id
+    #print(users_bd.get_status_of_last_registration(user_id))
     if str(user_id) in contest.stop_list:
-        users_bd.set_status(user_id)
+        users_bd.set_status(user_id, False)
         bot.send_message(chat_id=user_id,
                          text="Ваш профиль заблокирован в нашем сервисе")
         save_object(contest, "contest.pkl")
 
-    if users_bd.get_status_of_last_registration(user_id):
+    if not users_bd.get_status_of_last_registration(user_id):
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
                               text="Введите номер кошелька")
@@ -236,19 +254,26 @@ def work__admin(message):
     global users_bd, contest
     user_id = message.from_user.id
     flag = users_bd.get_flag(user_id)
-    # file_info = bot.download_file(bot.get_file(message.photo[len(message.photo) - 1].file_id).file_path)
-    # downloaded_file = bot.download_file(file_info.file_path)
-    # contest.photo = file_info
 
-    # bot.send_photo(chat_id=user_id,
-    #               photo=contest.photo)
     if flag in [11, 12, 13, 14, 15]:
         bot.delete_message(chat_id=user_id,
                            message_id=message.id)
         if message.photo is None:
+            if "{" in message.text and "}" in message.text:
+                s = message.text.split(' ')
+                txt = ''
+                for i in range(0, len(s)):
+                    if '{' in s[i] and '}' in s[i]:
+                        s[i] = s[i].replace('{', '').replace('}', '')
+                        # print(contest.variables_for_mes(s[i]))
+                        txt += f'{contest.variables_for_mes(s[i])}'
+                    else:
+                        txt += s[i] + ' '
+            else:
+                txt = message.text
             bot.edit_message_text(chat_id=user_id,
                                   message_id=users_bd.get_message_id(user_id),
-                                  text=f"Вы ввели: \n{message.text}",
+                                  text=f"Вы ввели: \n" + f'{txt}',
                                   reply_markup=complete_or_change_new_text)
             if flag == 11:
                 contest.text_final = message.text
@@ -310,7 +335,7 @@ def work__admin(message):
                                caption=contest.text_reminder,
                                reply_markup=complete_or_change_new_text2)
 
-    if flag in [1, 2, 3, 4, 5, 6, 7, 8]:
+    elif flag in [1, 2, 3, 4, 5, 6, 7, 8]:
         bot.delete_message(chat_id=user_id,
                            message_id=message.id)
         bot.edit_message_text(chat_id=user_id,
@@ -318,33 +343,61 @@ def work__admin(message):
                               text=f"Вы ввели: \n{message.text}",
                               reply_markup=complete_or_change_contest)
 
-    if flag == 10:
+    elif flag == 10:
         bot.delete_message(chat_id=user_id,
                            message_id=message.id)
+        check = True
         if message.text.isdigit():
             if int(message.text) in users_bd.data:
-                users_bd.set_status(int(message.text))
+                users_bd.set_status(int(message.text), False)
+                #print(111111111111111)
                 bot.edit_message_text(chat_id=user_id,
                                       message_id=users_bd.get_message_id(user_id),
-                                      text="Пользователь заблокирован")
+                                      text="Пользователь заблокирован",
+                                      reply_markup=back_in_admin_panel)
+                check = False
 
-        if message.text in users_bd.get_wallet_list():
+        if message.text in users_bd.get_wallet_list() and check:
             for i in users_bd.data:
                 if users_bd.data[i].wallet == message.text:
-                    users_bd.set_status(int(i))
+                    users_bd.set_status(int(i), False)
+                    bot.edit_message_text(chat_id=user_id,
+                                          message_id=users_bd.get_message_id(user_id),
+                                          text="Пользователь заблокирован",
+                                          reply_markup=back_in_admin_panel)
+
+                    check = False
                     break
-            bot.edit_message_text(chat_id=user_id,
-                                  message_id=users_bd.get_message_id(user_id),
-                                  text="Пользователь заблокирован")
-        else:
+        elif check:
             bot.edit_message_text(chat_id=user_id,
                                   message_id=users_bd.get_message_id(user_id),
                                   text=f"пользователь/кошелек - {message.text} не найден. Добавить в стоп лист?",
                                   reply_markup=action_stop_list)
 
+    elif flag == 17:
+        bot.delete_message(chat_id=user_id,
+                           message_id=message.id)
+        if message.text.isdigit():
+            if int(message.text) in users_bd.data:
+                users_bd.set_status(int(message.text), True)
+                bot.edit_message_text(chat_id=user_id,
+                                      message_id=users_bd.get_message_id(user_id),
+                                      text="Пользователь разблокирован",
+                                      reply_markup=back_in_admin_panel)
 
-@bot.callback_query_handler(func=lambda call: call.from_user.id in admin and
-                                              (users_bd.get_flag(call.from_user.id) != 9))
+        if message.text in users_bd.get_wallet_list():
+            for i in users_bd.data:
+                if users_bd.data[i].wallet == message.text:
+                    users_bd.set_status(int(i), True)
+                    break
+
+            bot.edit_message_text(chat_id=user_id,
+                                  message_id=users_bd.get_message_id(user_id),
+                                  text="Пользователь разблокирован",
+                                  reply_markup=back_in_admin_panel)
+
+
+@bot.callback_query_handler(func=lambda call: call.from_user.id in admin and users_bd.get_flag(call.from_user.id) != 9)
 def work_admin(call):
     global contest, data_text_for_create_contest
     user_id = call.from_user.id
@@ -368,7 +421,6 @@ def work_admin(call):
                                   text=data_text_for_create_contest[users_bd.get_flag(user_id) + 1])
             users_bd.set_flag(user_id, flag + 1)
 
-
         elif flag == 2:
             new_set = new_set.replace('.', ' ').split(' ')
             if len(new_set) == 4:
@@ -377,7 +429,7 @@ def work_admin(call):
                                                    month=int(new_set[1]),
                                                    day=int(new_set[0]),
                                                    hour=int(new_set[3]),
-                                                   minute=00)
+                                                   minute=0)
 
                     contest.time_start_contest = time_start
                     bot.edit_message_text(chat_id=user_id,
@@ -401,7 +453,7 @@ def work_admin(call):
                                                  month=int(new_set[1]),
                                                  day=int(new_set[0]),
                                                  hour=int(new_set[3]),
-                                                 minute=00)
+                                                 minute=0)
                     if time_end > contest.time_start_contest:
                         contest.time_end_contest = time_end
 
@@ -512,15 +564,22 @@ def work_admin(call):
                                                f"конец конкурса: {contest.time_end_contest}\n"
                                                f"время открытия регистрации: {contest.time_start_registration}\n"
                                                f"время закрытии регистрации: {contest.time_end_registration}\n"
-                                               f"время закрытия конкурса от новых участников: {contest.time_end_for_new_user}\n"
-                                               f"время бездействия для отправки уведомления: {contest.time_inaction} минут(а)\n"
-                                               f"периодичность напоминания о конкурсе: {contest.time_reminder} минут(а)\n"
+                                               f"время закрытия конкурса от новых участников: "
+                                               f"{contest.time_end_for_new_user}\n"
+
+                                               f"время бездействия для отправки уведомления: "
+                                               f"{contest.time_inaction} минут(а)\n"
+
+                                               f"периодичность напоминания о конкурсе: "
+                                               f"{contest.time_reminder} минут(а)\n"
+
                                                f"текст анонса: {contest.text_announcement}\n"
                                                f"текст финала: {contest.text_final}\n"
                                                f"текст отдачи статуса: {contest.text_for_new_leader}\n"
                                                f"текст поддержки: {contest.text_encouragement}\n"
                                                f"текст напоминания: {contest.text_reminder}\n"
                                                f"текст Вы можете изменить в админ панель -> изменить текста")
+                    save_object(contest, "contest.pkl")
                     users_bd.set_flag(user_id, 0)
                 except Exception as ex:
                     bot.answer_callback_query(callback_query_id=call.id,
@@ -536,8 +595,6 @@ def work_admin(call):
                               message_id=users_bd.get_message_id(user_id),
                               text=data_text_for_create_contest[users_bd.get_flag(user_id)])
 
-
-
     elif call.data == "change_text":
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
@@ -548,36 +605,46 @@ def work_admin(call):
     elif call.data == "change_announcement":
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
-                              text="введите новый текст",
-                              reply_markup=back_in_change_text)
+                              text=f"введите новый текст. \n"
+                                   f"установленное значение на данные момент: `{contest.text_announcement}`",
+                              reply_markup=back_in_change_text,
+                              parse_mode="Markdown")
         users_bd.set_flag(user_id, 12)
 
     elif call.data == "change_final":
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
-                              text="введите новый текст",
-                              reply_markup=back_in_change_text)
+                              text=f"введите новый текст. \n"
+                                   f"установленное значение на данные момент: `{contest.text_final}`",
+                              reply_markup=back_in_change_text,
+                              parse_mode="Markdown")
         users_bd.set_flag(user_id, 11)
 
     elif call.data == "change_status_return":
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
-                              text="введите новый текст",
-                              reply_markup=back_in_change_text)
+                              text=f"введите новый текст. \n"
+                                   f"установленное значение на данные момент: `{contest.text_for_new_leader}`",
+                              reply_markup=back_in_change_text,
+                              parse_mode="Markdown")
         users_bd.set_flag(user_id, 13)
 
     elif call.data == "change_support":
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
-                              text="введите новый текст",
-                              reply_markup=back_in_change_text)
+                              text=f"введите новый текст. \n"
+                                   f"установленное значение на данные момент: `{contest.text_encouragement}`",
+                              reply_markup=back_in_change_text,
+                              parse_mode="Markdown")
         users_bd.set_flag(user_id, 14)
 
     elif call.data == "change_reminder":
         bot.edit_message_text(chat_id=user_id,
                               message_id=users_bd.get_message_id(user_id),
-                              text="введите новый текст",
-                              reply_markup=back_in_change_text)
+                              text=f"введите новый текст. \n"
+                                   f"установленное значение на данные момент: `{contest.text_reminder}`",
+                              reply_markup=back_in_change_text,
+                              parse_mode="Markdown")
         users_bd.set_flag(user_id, 15)
 
     elif call.data == "complete_new_text":
@@ -622,6 +689,27 @@ def work_admin(call):
                               reply_markup=back_in_admin_panel,
                               parse_mode="Markdown")
         users_bd.set_flag(user_id, 10)
+    elif call.data == "unblock_user":
+        id_wallet = ''
+        data = users_bd.data
+        for i in data:
+            #print(data[i].__dict__)
+            if not data[i].status:
+                id_wallet += f"`{i}` - `{data[i].wallet}` \n"
+
+        if id_wallet == "":
+            bot.answer_callback_query(callback_query_id=call.id,
+                                      text="на данный момент нет заблокированных пользователей или кошельков",
+                                      show_alert=True)
+        else:
+            bot.edit_message_text(chat_id=user_id,
+                                  message_id=users_bd.get_message_id(user_id),
+                                  text=f"отправьте id пользователя или же его номер кошелька. "
+                                       f"Вот данные, которые есть в базе данных(id - номер кошелька)\n"
+                                       f"{id_wallet}",
+                                  reply_markup=back_in_admin_panel,
+                                  parse_mode="Markdown")
+            users_bd.set_flag(user_id, 17)
 
     elif call.data == "yes_stop_list":
         id_wallet = call.message.text.split(" ")[2]
