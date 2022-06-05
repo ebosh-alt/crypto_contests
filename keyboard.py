@@ -4,6 +4,7 @@ admin_start = types.InlineKeyboardMarkup(row_width=1).add(
     types.InlineKeyboardButton(text="создать конкурс", callback_data="add_contest"),
     types.InlineKeyboardButton(text="забанить пользователя", callback_data="block_user"),
     types.InlineKeyboardButton(text="разблокировать пользователя", callback_data="unblock_user"),
+    types.InlineKeyboardButton(text="просмотреть конкурс", callback_data="see_contest"),
     types.InlineKeyboardButton(text="изменить текста", callback_data="change_text"))
 
 admin_change_text = types.InlineKeyboardMarkup(row_width=1).add(
@@ -12,6 +13,7 @@ admin_change_text = types.InlineKeyboardMarkup(row_width=1).add(
     types.InlineKeyboardButton(text="изменить текст отдачи статуса", callback_data="change_status_return"),
     types.InlineKeyboardButton(text="изменить текст поддержки", callback_data="change_support"),
     types.InlineKeyboardButton(text="изменить текст напоминания", callback_data="change_reminder"),
+
     types.InlineKeyboardButton(text="назад", callback_data="back_in_admin_panel")
 )
 
@@ -20,11 +22,13 @@ back_in_admin_panel = types.InlineKeyboardMarkup(row_width=1).add(
 )
 
 back_in_change_text = types.InlineKeyboardMarkup(row_width=1).add(
-    types.InlineKeyboardButton(text="назад", callback_data="change_text")
+    types.InlineKeyboardButton(text="назад", callback_data="change_text"),
+    types.InlineKeyboardButton(text="пропустить", callback_data="skip_change_text")
 )
 
 complete_or_change_new_text = types.InlineKeyboardMarkup(row_width=1).add(
-    types.InlineKeyboardButton(text="добавить фото", callback_data="add_photo"),
+    types.InlineKeyboardButton(text="добавить/изменить фото", callback_data="add_photo"),
+    types.InlineKeyboardButton(text="удалить фото", callback_data="del_photo"),
     types.InlineKeyboardButton(text="подтвердить", callback_data="complete_new_text"),
     types.InlineKeyboardButton(text="изменить", callback_data="change_introduced_text")
 )
