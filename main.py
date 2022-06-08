@@ -27,20 +27,31 @@ def load_object(file_name="tasks.pkl"):
         data = pickle.load(fp)
     return data
 
+
+_______________________________________________________________________________________
+
+def start_contest(process,time_cooldown):
+    contest___ = Schedule_contest()
+    leaders = Leaders()
+    #schedule.every(10).seconds.do(Schedule_contest.main_func, args=(process, leaders))
+    a = schedule.every(time_cooldown).seconds.do(contest___.main_func, leaders)
+
+    while True:
+        print("Проходим")
+        if contest___.logic_steps==5:
+            break
+        schedule.run_pending()
+        time.sleep(5)
+
 class Schedule_contest():
     logic_steps = 0
     ending_an_hour = False
     time_of_last_reminder = None
     time_appear_new_leader = None
-    def start_contest(process,time_cooldown):
-        leaders = Leaders()
-        schedule.every(time_cooldown).minutes.do(Schedule_contest.main_func, args=(process, leaders))
+    is_working = True
     
-        while True:
-            schedule.run_pending()
-            time.sleep(5)
     
-    def main_func(self,process,leaders):
+    def main_func(self,leaders):
         contest = load_object(file_name="contest.pkl")
         users_bd = load_object(file_name="users_bd.pkl")
         cur_time = datetime.datetime.today()
@@ -52,14 +63,14 @@ class Schedule_contest():
             #Начало регистрации
             if self.logic_steps == 0:
                 print("Началась регистрация")
-                #self.channel_sending(text="Регистрация открыта", leader=leaders.get_leader())
-                self.sending_all_users_mes(users_bd = users_bd, leader=leaders.get_leader(), text = "Началась регистрация", photo = None, reply_markup = registration_for_contest)
+                #channel_sending(text="Регистрация открыта", leader=leaders.get_leader())
+                sending_all_users_mes(users_bd, leaders.get_leader(), "Началась регистрация", None, registration_for_contest)
                 self.logic_steps+=1
             #Старт конкурса
             if self.logic_steps == 1:
                 if contest.time_start_contest <= cur_time:
                     print("Конкурс начался")
-                    #self.channel_sending(text=contest.text_announcement, leader=leaders.get_leader(), photo=contest.photo_announcement)
+                    #channel_sending(text=contest.text_announcement, leader=leaders.get_leader(), photo=contest.photo_announcement)
                     self.logic_steps+=1
                 else:
                     print("Конкурс не начался")
@@ -67,7 +78,7 @@ class Schedule_contest():
             if self.logic_steps == 2:
                 if contest.time_end_for_new_user <= cur_time:
                     print("Конец регистрации для новых пользователей")
-                    #self.channel_sending(text="Регистрация для новых пользователей закончилась", leader=leaders.get_leader())
+                    #channel_sending(text="Регистрация для новых пользователей закончилась", leader=leaders.get_leader())
                     self.logic_steps+=1
                 else:
                     print("Регистрация для новых пользователей активна")
@@ -75,7 +86,7 @@ class Schedule_contest():
             if self.logic_steps == 3:
                 if contest.time_end_registration <= cur_time:
                     print("Конец регистрации для всех пользователей")
-                    #self.channel_sending(text="Регистрация для всех пользователей закончилась", leader=leaders.get_leader())
+                    #channel_sending(text="Регистрация для всех пользователей закончилась", leader=leaders.get_leader())
                     self.logic_steps+=1
                 else:
                     print("Регистрация для новых пользователей неактивна")
@@ -83,32 +94,31 @@ class Schedule_contest():
             if self.logic_steps == 4:
                 if contest.time_end_contest <= cur_time:
                     print("Конец конкурса")
-                    #self.channel_sending(text=contest.text_final, leader=leaders.get_leader(), photo=contest.photo_final)
+                    #channel_sending(text=contest.text_final, leader=leaders.get_leader(), photo=contest.photo_final)
 
                     #20 лидеров для админа
                     #if leaders.is_data_empty():
-                    #    self.sending_admins(admins=admin, text="Нет лидеров")  
+                    #    sending_admins(admins=admin, text="Нет лидеров")  
                     #else:  
-                    #    self.sending_admins(admins=admin, text=leaders.response_for_admin(), keyboard=leaders.keyboard_with_leaders())
+                    #    sending_admins(admins=admin, text=leaders.response_for_admin(), keyboard=leaders.keyboard_with_leaders())
 
                     #Завершение процесса
-                    #process.stop_process()
                     self.logic_steps+=1
                 else:
                     print("Конкурс не закончился")
             else:
                 #Напоминание
-                if self.time_of_last_reminder == None:
+                if self.time_of_last_reminder is None:
                     self.time_of_last_reminder = contest.time_start_contest
                 elif (cur_time - self.time_of_last_reminder) >= datetime.timedelta(minutes=contest.time_reminder):
-                    self.channel_sending(text=contest.text_reminder, leader=leaders.get_leader(), photo=contest.photo_reminder)
+                    channel_sending(text=contest.text_reminder, leader=leaders.get_leader(), photo=contest.photo_reminder)
                     self.time_of_last_reminder = cur_time
                 
                 #Поддержка
-                if self.time_appear_new_leader == None:
+                if self.time_appear_new_leader is None:
                     self.time_appear_new_leader = contest.time_start_contest
                 elif (cur_time - self.time_appear_new_leader) >= datetime.timedelta(minutes=contest.time_inaction):
-                    self.channel_sending(text=contest.text_encouragement, leader=leaders.get_leader(), photo=contest.photo_encouragement)
+                    channel_sending(text=contest.text_encouragement, leader=leaders.get_leader(), photo=contest.photo_encouragement)
                     self.time_appear_new_leader = cur_time
                 
                 #Парсинг
@@ -118,65 +128,86 @@ class Schedule_contest():
             if not self.ending_an_hour:
                 if ((contest.time_end_contest - cur_time)) <= datetime.timedelta(hours=1):
                     print("До конца конкурса осталося час")
-                    #self.channel_sending(text="До конца конкурса остался час")
+                    #channel_sending(text="До конца конкурса остался час")
                     self.ending_an_hour = True            
-            
 
-    def sending_all_users_mes(users_bd, leader, text, photo=None, reply_markup = None):
-        #if leader == None:
-        #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
-        #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
-        #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
-        #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"))   
-        #else:
-        #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
-        #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
-        #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
-        #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"), 
-        #                     wallet_leader=leader.wallet, username_leader=leader.user_name)
-        #if photo==None:
-        #    for id in users_bd.data:
-        #        bot.send_message(chat_id=id, text = text, photo = photo, reply_markup=reply_markup)
-        #else:
-        #    for id in users_bd.data:
-        #        bot.send_photo(chat_id=id, photo=photo, caption=text)
-        pass
+        return 0
 
-    def channel_sending(text, leader, photo=None, reply_markup = None):
-        #if leader == None:
-        #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
-        #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
-        #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
-        #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"))   
-        #else:
-        #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
-        #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
-        #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
-        #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"), 
-        #                     wallet_leader=leader.wallet, username_leader=leader.user_name)
-        #if photo==None:
-        #    bot.send_message(chat_id=channel_id, text = text, photo = photo, reply_markup=reply_markup)
-        #else:
-        #    bot.send_photo(chat_id=channel_id, photo=photo, caption=text)
-        pass
-
-    def sending_admins(self, admins, text, keyboard=None):
-        for admin in admins:
-            bot.send_message(chat_id=admin, text=text, reply_markup=keyboard)
-
-    def parsing():
+    def parsing(self):
         print("Парсинг работает")
 
+def sending_admins(self, admins, text, keyboard=None):
+    for admin in admins:
+        bot.send_message(chat_id=admin, text=text, reply_markup=keyboard)
+
+def sending_all_users_mes(users_bd, leader, text, photo=None, reply_markup = None):
+    #if leader == None:
+    #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
+    #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
+    #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
+    #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"))   
+    #else:
+    #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
+    #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
+    #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
+    #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"), 
+    #                     wallet_leader=leader.wallet, username_leader=leader.user_name)
+    #if photo==None:
+    #    for id in users_bd.data:
+    #        bot.send_message(chat_id=id, text = text, photo = photo, reply_markup=reply_markup)
+    #else:
+    #    for id in users_bd.data:
+    #        bot.send_photo(chat_id=id, photo=photo, caption=text)
+    pass
+
+def channel_sending(text, leader, photo=None, reply_markup = None):
+    #if leader == None:
+    #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
+    #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
+    #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
+    #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"))   
+    #else:
+    #    text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), 
+    #                     time_end_registration=contest.variables_for_mes("time_end_contest"), 
+    #                     remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), 
+    #                     remaining_time_registration=contest.variables_for_mes("remaining_time_registration"), 
+    #                     wallet_leader=leader.wallet, username_leader=leader.user_name)
+    #if photo==None:
+    #    bot.send_message(chat_id=channel_id, text = text, photo = photo, reply_markup=reply_markup)
+    #else:
+    #    bot.send_photo(chat_id=channel_id, photo=photo, caption=text)
+    pass
+
 class Process_for_contest():
-    def __init__(self):
-        self.p0 = Process(target=Schedule_contest.start_contest, args=())
+    p0 = Process()
 
     def start_process(self,time_cooldown):
-        self.p0 = Process(target=Schedule_contest.start_contest, args=(self, time_cooldown))
+        self.p0 = Process(target=start_contest, args=(self, time_cooldown))
         self.p0.start()
+        print("Процесс запущен")
 
     def stop_process(self):
         self.p0.terminate()
+        print("stop_process")
+
+class users_become_old():
+    def __init__(self):
+        self.data = []
+    def __add__(self,other):
+        self.data.append(other)
+        return self
+    def __iadd__(self, other):
+        self.data.append(other)
+        return self
+    def save(self):
+        save_object(data=self, file_name="old_users.py")
+    def is_empty(self):
+        if self.data:
+            return False
+        else:
+            return True
+
+___________________________________________________________________________________--
 
 class Contest:
     def __init__(self):
@@ -201,7 +232,7 @@ class Contest:
         self.max_transaction = 0
         self.wallet_leader = None
         self.username_leader = None
-        self.time_cooldown = None
+        self.time_cooldown = 10
         self.stop_list = []
 
     def variables_for_mes(self, value):
@@ -271,7 +302,6 @@ class User:
         self.message_id = 0
         self.status = True
 
-
 class Users:
     count_user = 0
 
@@ -328,8 +358,8 @@ class Users:
         return wallet_list
 
 
-contest = load_object("contest.pkl")
-users_bd = load_object("users_bd.pkl")
+contest = Contest()# load_object("contest.pkl")
+users_bd = Users()# load_object("users_bd.pkl")
 #print(users_bd.__dict__)
 contest_proc = Process_for_contest()
 start_text = "Вас приветствует xxx. Какое-то описание необходимо"
@@ -814,8 +844,9 @@ def work_admin(call):
                                                f"текст Вы можете изменить в админ панель -> изменить текста")
                     save_object(contest, "contest.pkl")
                     if contest_proc.p0.is_alive():
+                        print("alive")
                         contest_proc.stop_process()
-                    contest_proc.start_process()
+                    contest_proc.start_process(contest.time_cooldown)
                     users_bd.set_flag(user_id, 0)
                 except Exception as ex:
                     bot.answer_callback_query(callback_query_id=call.id,
