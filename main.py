@@ -207,7 +207,7 @@ class users_become_old():
         else:
             return True
 
-___________________________________________________________________________________--
+___________________________________________________________________________________
 
 class Contest:
     def __init__(self):
@@ -296,6 +296,7 @@ class Leaders():
 
 class User:
     def __init__(self):
+        self.participant_status = False
         self.flag = 0
         self.wallet = None
         self.status_of_last_registration = False
@@ -329,6 +330,12 @@ class Users:
         if id not in self.data:
             self.data[id] = User()
         self.data[id].status = value
+
+    def set_participant_status(self, id):
+        self.data[id].participant_status = True
+    
+    def get_participant_status(self, id):
+        return self.data[id].participant_status
 
     def get_status(self, id):
         return self.data[id].status
@@ -424,14 +431,26 @@ def command_admin(message):
     users_bd.set_message_id(user_id, r.id)
 
 
-@bot.message_handler(commands=["reg"])
+__________________________________________________________________________________________________________________________
+
+
+@bot.message_handler(commands=["reg"], func=lambda message: message.from_user.id in users_bd.data)
 def reg(message):
     global users_bd
     user_id = message.from_user.id
-    r = bot.send_message(chat_id=user_id,
+    cur_time = datetime.datetime.today()
+    #ПРОВЕРКА НА ВОЗМОЖНОСТЬ ЗАРЕГИСТРИРОВАТЬСЯ
+    if contest.time_start_registration < cur_time and cur_time < contest.time_end_contest \
+    and ((contest.time_end_for_new_user > cur_time and not users_bd.get_participant_status(user_id)) \
+    or (contest.time_end_registration > cur_time and users_bd.get_participant_status(user_id))):
+        r = bot.send_message(chat_id=user_id,
                          text="Вы можете зарегистрироваться",
                          reply_markup=registration_for_contest)
-    users_bd.set_flag(user_id, 9)
+        users_bd.set_flag(user_id, 9)
+    else:
+        r = bot.send_message(chat_id=user_id,
+                         text="Вы не можете зарегистрироваться")
+    
     users_bd.set_message_id(user_id, r.id)
 
 
@@ -447,15 +466,20 @@ def reg_wallet(message):
         save_object(contest, "contest.pkl")
 
     elif not users_bd.get_status_of_last_registration(user_id):
-        users_bd.set_wallet(user_id, message.text)
-        users_bd.set_status_of_last_registration(user_id)
-        bot.edit_message_text(chat_id=user_id,
-                              message_id=users_bd.get_message_id(user_id),
-                              text="Вы успешно зарегистрированы!")
-        users_bd.set_flag(user_id, 0)
-        bot.delete_message(chat_id=user_id,
-                           message_id=message.id)
-        save_object(users_bd, "users_bd.pkl")
+        cur_time = datetime.datetime.today()
+        #ПРОВЕРКА НА ВОЗМОЖНОСТЬ ЗАРЕГИСТРИРОВАТЬСЯ
+        if contest.time_start_registration < cur_time and cur_time < contest.time_end_contest \
+        and ((cur_time < contest.time_end_for_new_user and not users_bd.get_participant_status(user_id)) \
+        or (cur_time < contest.time_end_registration and users_bd.get_participant_status(user_id))):
+            users_bd.set_wallet(user_id, message.text)
+            users_bd.set_status_of_last_registration(user_id)
+            bot.edit_message_text(chat_id=user_id,
+                                message_id=users_bd.get_message_id(user_id),
+                                text="Вы успешно зарегистрированы!")
+            users_bd.set_flag(user_id, 0)
+            bot.delete_message(chat_id=user_id,
+                            message_id=message.id)
+            save_object(users_bd, "users_bd.pkl")
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "registration_for_contest")
@@ -469,11 +493,20 @@ def call_reg(call):
                          text="Ваш профиль заблокирован в нашем сервисе")
         save_object(contest, "contest.pkl")
 
-    if not users_bd.get_status_of_last_registration(user_id):
-        bot.edit_message_text(chat_id=user_id,
-                              message_id=users_bd.get_message_id(user_id),
-                              text="Введите номер кошелька")
+    elif not users_bd.get_status_of_last_registration(user_id):
+        cur_time = datetime.datetime.today()
+        #ПРОВЕРКА НА ВОЗМОЖНОСТЬ ЗАРЕГИСТРИРОВАТЬСЯ
+        if contest.time_start_registration < cur_time and cur_time < contest.time_end_contest \
+        and ((cur_time < contest.time_end_for_new_user and not users_bd.get_participant_status(user_id)) \
+        or (cur_time < contest.time_end_registration and users_bd.get_participant_status(user_id))):
+            bot.edit_message_text(chat_id=user_id,
+                                message_id=users_bd.get_message_id(user_id),
+                                text="Введите номер кошелька")
         users_bd.set_flag(user_id, 9)
+
+
+
+____________________________________________________________________________________________________________________________
 
 
 @bot.message_handler(content_types=["text", "photo", "document"],
