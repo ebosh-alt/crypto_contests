@@ -90,6 +90,8 @@ class nsql_database:
 class Contest_users(nsql_database):
     def __init__(self) -> None:
         super().__init__()
+        self.action_new_user = True
+        self.action_old_user = True
         self.leader = []
 
     def __contains__(self, other) -> bool:
@@ -141,17 +143,32 @@ class Contest_users(nsql_database):
             if buy == obj_user.max_buy:
                 return i
 
-    def new_leader(self, buy: float, wallet: str, contest: object) -> bool:
-        value = list(map(lambda i: self.get_elem(i).max_buy, self.data))
+    def new_leader(self, buy: float, wallet: str) -> bool:
+        value = list(map(lambda i: self.get_elem(i).max_buy, self.leader))
         if len(value) >= 20:
-            if min(value) <= buy:
+            if min(value) < buy:
                 self.leader[self.get_id_for_buy(min(value))] = self.get_id_for_wallet(wallet)
+            if max(value) < buy:
                 return True
             else:
                 return False
         else:
             self.leader.append(self.get_id_for_wallet(wallet))
             return True
+
+    def response_for_admin(self):
+        response = "Список лидеров:\n"
+        for id in self.leader:
+            leader = self.get_elem(id)
+            response += f"user_id: {id}\nuser_name: {leader.user_name}\nКошелёк: {leader.wallet}\n" \
+                        f"Продано: {leader.sell}\nКуплено: {leader.buy}\nМаксимальная покупка: {leader.max_buy}\n\n"
+        return response
+
+    def keyboard_with_leaders(self):
+        keyboard = types.InlineKeyboardMarkup()
+        for id in self.leader:
+            keyboard.add(types.InlineKeyboardButton(text=id, callback_data=id))
+        return keyboard
 
 
 class Users(nsql_database):
@@ -222,4 +239,3 @@ class Leader:
         self.sell = sell
         self.buy = buy
         self.total_amount = total_amount
-
