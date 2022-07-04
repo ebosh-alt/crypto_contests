@@ -114,20 +114,21 @@ class Schedule_contest:
 
                     self.logic_steps += 1
 
-            else:
-                # Напоминание
-                if self.time_of_last_reminder is None:
-                    self.time_of_last_reminder = contest.time_start_contest
-                elif (cur_time - self.time_of_last_reminder) >= datetime.timedelta(minutes=contest.time_reminder):
-                    self.channel_sending(text=contest.text_reminder, img=contest.photo_reminder)
+            #Напомминание
+            if self.time_of_last_reminder is None:
+                self.time_of_last_reminder = contest.time_start_contest
+            elif (cur_time - self.time_of_last_reminder) >= datetime.timedelta(minutes=contest.time_reminder):
+                self.channel_sending(text=contest.text_reminder, img=contest.photo_reminder)
 
-                # Поддержка
-                if self.time_appear_new_leader is not None:
-                    if (cur_time - self.time_appear_new_leader) >= datetime.timedelta(minutes=contest.time_inaction):
-                        self.channel_sending(text=contest.text_encouragement, img=contest.photo_encouragement)
+            # Поддержка
+            if self.time_appear_new_leader is not None:
+                if (cur_time - self.time_appear_new_leader) >= datetime.timedelta(minutes=contest.time_inaction):
+                    self.channel_sending(text=contest.text_encouragement, img=contest.photo_encouragement)
 
-                # Парсинг
-                # print("parsing")
+            
+            # Парсинг
+            # print("parsing")
+            if contest.time_start_contest <= cur_time:
                 self.parsing(contest_users, contest.contract_number, contest.time_cooldown, contest)
 
             # До конца конкурса остался час
@@ -167,7 +168,7 @@ class Schedule_contest:
     def sending_admins(self, admins, text, keyboard=None):
         for admin in admins:
             bot.send_message(chat_id=admin, text=text, reply_markup=keyboard)
-
+    
     def parsing(self, contest_users, contract, periodic_time, contest):
         try:
             link = "https://bscscan.com/token/" + contract
@@ -214,6 +215,7 @@ class Schedule_contest:
                         #    if contest_users.action_new_user or contest_user.status_contest:
                         if "Swap" in data[buy]["type"]:
                             # if contest_users.new_leader(buy, data[buy]["from"]):
+                            self.time_appear_new_leader = datetime.datetime.today()
                             self.channel_sending(text=contest.text_for_new_leader,
                                                  img=contest.photo_for_new_leader)
                             break
