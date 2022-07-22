@@ -3,6 +3,7 @@ from telebot import types
 admin_start = types.InlineKeyboardMarkup(row_width=1).add(
     types.InlineKeyboardButton(text="создать конкурс", callback_data="add_contest"),
     types.InlineKeyboardButton(text="остановить конкурс", callback_data="stop_contest"),
+    types.InlineKeyboardButton(text="просмотреть конкурс", callback_data="present_context"),
     types.InlineKeyboardButton(text="забанить пользователя", callback_data="block_user"),
     types.InlineKeyboardButton(text="разблокировать пользователя", callback_data="unblock_user"),
     types.InlineKeyboardButton(text="изменить текста", callback_data="change_text"))
