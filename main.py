@@ -1,8 +1,6 @@
-# import json
-import telebot
+import datetime
 
-# import re
-# import datetime
+import telebot
 import pickle
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -12,6 +10,7 @@ from selenium.webdriver import FirefoxOptions
 from multiprocessing import *
 import schedule
 import time
+import json
 from datetime import timedelta
 # from flask import Flask, request
 from keyboard import *
@@ -30,6 +29,19 @@ def load_object(file_name="tasks.pkl"):
     return data
 
 
+###сохранение файла в .json
+def save_data(data, file_name="users_bd.json") -> None:
+    with open(file_name, "w+", encoding="UTF-8") as f:
+        json.dump(data, f, indent=4)
+
+
+###загрузка файла из .json
+def load_data(file_name="users_bd.json") -> dict:
+    with open(file_name, "r+", encoding="UTF-8") as f:
+        data = json.load(f)
+    return data
+
+
 def start_contest():
     contest_users = Contest_users()
     contest___ = Schedule_contest()
@@ -43,23 +55,22 @@ def start_contest():
         time.sleep(5)
 
 
-
-
-
 class Schedule_contest:
     logic_steps = 0
     ending_an_hour = False
     time_of_last_reminder = None
     time_appear_new_leader = None
+    print(logic_steps)
 
-    def main_func(self, contest_users):
+    def main_func(self, contest_users: Contest_users):
         contest = load_object(file_name="contest.pkl")
         # contest_users = load_object(file_name="contest_users.pkl")
         users_bd = load_object(file_name="users_bd.pkl")
         cur_time = datetime.datetime.today()
+
         if contest.time_start_registration > cur_time:
             pass
-            # print("Регистрация ещё не началась")
+
         else:
             # Начало регистрации
             if self.logic_steps == 0:
@@ -90,31 +101,7 @@ class Schedule_contest:
                     self.channel_sending(text=text_for_end_reg_old_user)
                     self.logic_steps += 1
 
-            # Конец конкурса
-            if self.logic_steps == 4:
-                if contest.time_end_contest <= cur_time:
-                    for id in contest_users:
-                        contest_user = contest_users.get_elem(id)
-                        user = users_bd.get_elem(id)
-                        user.status_contest = contest_user.status_contest
-                        user.status_of_last_registration = False
-                    self.channel_sending(text=contest.text_final, img=contest.photo_final)
-                    test_res()
-                    """# 20 лидеров для админа
-                    if contest_users.leader:
-                        #self.sending_admins(admins=admin, text="Нет лидеров")
-                        pass
-                    else:
-                        self.sending_admins(admins=admin,
-                                            text=contest_users.response_for_admin(),
-                                            keyboard=contest_users.keyboard_with_leaders())"""
-                    contest_users = Contest_users()
-                    save_object(users_bd, "contest_users_bd.pkl")
-                    save_object(contest_users, "contest_users.pkl")
-
-                    self.logic_steps += 1
-
-            #Напомминание
+            # Напомминание
             if self.time_of_last_reminder is None:
                 self.time_of_last_reminder = contest.time_start_contest
             elif (cur_time - self.time_of_last_reminder) >= datetime.timedelta(minutes=contest.time_reminder):
@@ -122,10 +109,11 @@ class Schedule_contest:
 
             # Поддержка
             if self.time_appear_new_leader is not None:
-                if (cur_time - self.time_appear_new_leader) >= datetime.timedelta(minutes=contest.time_inaction):
-                    self.channel_sending(text=contest.text_encouragement, img=contest.photo_encouragement)
+                if (cur_time - self.time_appear_new_leader) >= datetime.timedelta(
+                        minutes=contest.time_inaction):
+                    self.channel_sending(text=contest.text_encouragement,
+                                         img=contest.photo_encouragement)
 
-            
             # Парсинг
             # print("parsing")
             if contest.time_start_contest <= cur_time:
@@ -136,8 +124,31 @@ class Schedule_contest:
                 if (contest.time_end_contest - cur_time) <= datetime.timedelta(hours=1):
                     self.channel_sending(text="До конца конкурса остался час")
                     self.ending_an_hour = True
+            # Конец конкурса
+            if self.logic_steps == 4:
+                if contest.time_end_contest <= cur_time:
+                    self.channel_sending(text=contest.text_final, img=contest.photo_final)
+                    for id in contest_users.data:
+                        contest_user = contest_users.get_elem(id)
+                        user = users_bd.get_elem(id)
+                        user.status_contest = contest_user.status_contest
+                        user.status_of_last_registration = False
 
-    def sending_all_users_mes(self, users_bd, text, reply_markup=None):
+                    # 20 лидеров для админа
+                    if contest_users.leader:
+                        self.sending_admins(admins=admin, text="Нет лидеров")
+                        pass
+                    else:
+                        self.sending_admins(admins=admin,
+                                            text=contest_users.response_for_admin(),
+                                            keyboard=contest_users.keyboard_with_leaders())
+                    contest_users = Contest_users()
+                    save_object(users_bd, "contest_users_bd.pkl")
+                    save_object(contest_users, "contest_users.pkl")
+                    self.logic_steps += 1
+
+    @staticmethod
+    def sending_all_users_mes(users_bd, text, reply_markup=None):
         text = text.format(time_start_contest=contest.variables_for_mes("time_start_contest"),
                            time_end_registration=contest.variables_for_mes("time_end_registration"),
                            remaining_time_contest=contest.variables_for_mes("remaining_time_contest"),
@@ -147,34 +158,41 @@ class Schedule_contest:
         for id in users_bd.data:
             bot.send_message(chat_id=id, text=text, reply_markup=reply_markup)
 
-    def channel_sending(self, text, img=None, reply_markup=None):
-        # value = list(map(lambda i: contest_users.get_elem(i).max_buy, contest_users.leader))
-        # max_buy = max(value)
-        # leader = contest_users.get_elem(contest_users.get_id_for_buy(max_buy))
-        # wallet_leader = leader.wallet
-        # username_leader = "@" + leader.username
+    @staticmethod
+    def channel_sending(text, img=None, reply_markup=None):
+        value = list(map(lambda i: contest_users.get_elem(i).max_buy, contest_users.leader))
+        if len(value) != 0:
+            max_buy = max(value)
+            leader = contest_users.get_elem(contest_users.get_id_for_buy(max_buy))
+        try:
+            wallet_leader = leader.wallet
+            username_leader = "@" + leader.username
+        except:
+            wallet_leader = None
+            username_leader = None
         text = text.format(time_start_contest=contest.variables_for_mes("time_start_contest"),
                            time_end_contest=contest.variables_for_mes("time_end_contest"),
                            remaining_time_contest=contest.variables_for_mes("remaining_time_contest"),
-                           remaining_time_registration=contest.variables_for_mes("remaining_time_registration"))
-        # ,
-        #                 wallet_leader=wallet_leader,
-        #                 username_leader=username_leader
+                           remaining_time_registration=contest.variables_for_mes("remaining_time_registration"),
+                           wallet_leader=wallet_leader,
+                           username_leader=username_leader)
         if img is None:
             bot.send_message(chat_id=channel_id, text=text, reply_markup=reply_markup)
         else:
             bot.send_photo(chat_id=channel_id, photo=img, caption=text)
 
-    def sending_admins(self, admins, text, keyboard=None):
+    @staticmethod
+    def sending_admins(admins, text, keyboard=None):
         for admin in admins:
             bot.send_message(chat_id=admin, text=text, reply_markup=keyboard)
-    
+
     def parsing(self, contest_users, contract, periodic_time, contest):
         try:
             link = "https://bscscan.com/token/" + contract
             service = Service(GeckoDriverManager().install())
             options = FirefoxOptions()
-            user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.86'
+            user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
+                         'Chrome/89.0.4389.86'
             options.add_argument(f"user-agent={user_agent}")
             options.add_argument('--headless')
             options.add_argument("--log-level=3")
@@ -206,27 +224,32 @@ class Schedule_contest:
                                                                      "to": info[i - 1]
                                                                      }
                 if len(data) != 0:
-                    data = sorted(data, reverse=True)
-                    bot.send_message(chat_id=5191469996,
-                                     text=str(data))
-                    # list_wallet = contest_users.gat_all_wallet()
-                    for buy in data:
-                        # if contest_user := contest_users.get_elem_for_wallet(data[buy]["from"], list_wallet):
-                        #    if contest_users.action_new_user or contest_user.status_contest:
-                        if "Swap" in data[buy]["type"]:
-                            # if contest_users.new_leader(buy, data[buy]["from"]):
-                            self.time_appear_new_leader = datetime.datetime.today()
-                            self.channel_sending(text=contest.text_for_new_leader,
-                                                 img=contest.photo_for_new_leader)
-                            break
-
+                    key = sorted(data, reverse=True)
+                    try:
+                        other = {datetime.datetime.today(): data}
+                        save_data(other, "info_pars.json")
+                    except:
+                        pass
+                    list_wallet = contest_users.gat_all_wallet()
+                    for buy in key:
+                        if contest_user := contest_users.get_elem_for_wallet(data[buy]["from"], list_wallet):
+                            if contest_users.action_new_user or contest_user.status_contest:
+                                if "Swap" in data[buy]["type"]:
+                                    if contest_users.new_leader(buy, data[buy]["from"]):
+                                        self.time_appear_new_leader = datetime.datetime.today()
+                                        self.channel_sending(text=contest.text_for_new_leader,
+                                                             img=contest.photo_for_new_leader)
+                                        contest_user.max_buy = buy
+                                    contest_user.buy += buy
+                                elif "Transfer" in data[buy]["type"]:
+                                    contest_user.sell += buy
                     page += 1
+
                 else:
                     stop = True
             driver.close()
             driver.quit()
         except Exception as ex:
-
             bot.send_message(chat_id=5191469996,
                              text="ERRROR\n" + str(ex))
 
@@ -242,29 +265,14 @@ class Process_for_contest:
         self.p0.terminate()
 
 
-contest_users = Contest_users()  # load_object("contest_users.pkl")
-contest = load_object("contest.pkl")
-
-contest.time_end_registration = datetime.datetime(year=int(2022),
-                                                  month=int(7),
-                                                  day=int(2),
-                                                  hour=int(8),
-                                                  minute=0)
-contest.time_end_contest = datetime.datetime(year=int(2022),
-                                             month=int(7),
-                                             day=int(2),
-                                             hour=int(10),
-                                             minute=0)
-users_bd = load_object("users_bd.pkl")
-# print(users_bd.__dict__)
+contest_users = Contest_users()
+contest = Contest()
+users_bd = Users()
 contest_proc = Process_for_contest()
 test_win = ['6453728', '6453865', '6454002', '6454139', '6454276', '6454413', '6454550', '6454687', '6454824',
             '6454961', '6455098', '6455235', '6455372', '6455509', '6455646', '6455783', '6455920', '6456057',
             '6456194', '6456331']
 
-admin = [5191469996, 2059338796, 754513655]
-channel_id = -708274106
-API_TOKEN = "5148773072:AAEdJKuQuni0yrhFVTYkVd-oc1p_X4iicgk"  # "5002199932:AAEGc9BEvAsIPF9ro4Ig1HaNmKAtTcmq8QA"
 bot = telebot.TeleBot(API_TOKEN)
 bot.delete_webhook()
 data_text_for_create_contest = {1: 'введите номер контракта',
@@ -277,24 +285,25 @@ data_text_for_create_contest = {1: 'введите номер контракта
                                 7: 'через сколько минут напоминать о том, что идет конкурс?(в минутах)',
                                 8: 'введите кулдаун(в минутах)'}
 
+
 def test_res():
-    global admin
     response = ''
     keyboard = types.InlineKeyboardMarkup(row_width=1)
-    for i in range(6453728, 6453728+137*20,137):
+    for i in range(6453728, 6453728 + 137 * 20, 137):
         user_id = i
         username = None
-        wallet = '0x'+str(i*2)
+        wallet = '0x' + str(i * 2)
         sell = i // 2
         buy = int(i * 1.5)
         max_buy = int(i * 0.7)
         response += f"user_id: {user_id}\nuser_name: {username}\nКошелёк: {wallet}\n" \
                     f"Продано: {sell}\nКуплено: {buy}\nМаксимальная покупка: {max_buy}\n\n"
         keyboard.add(types.InlineKeyboardButton(text=user_id, callback_data=user_id))
-    for i in admin:
-        bot.send_message(chat_id=i,
-                         text=response,
-                         reply_markup=keyboard)
+
+    bot.send_message(chat_id=5191469996,
+                     text=response,
+                     reply_markup=keyboard)
+
 
 @bot.message_handler(func=lambda message: message.from_user.id in users_bd.data and not users_bd.get_status(
     message.from_user.id))
@@ -303,21 +312,24 @@ def other(message):
     user_id = message.from_user.id
     bot.send_message(chat_id=user_id,
                      text=text_for_ban_user)
-    # save_object(contest, "contest.pkl")
+    save_object(contest, "contest.pkl")
+
 
 @bot.message_handler(commands=['end_cont'])
 def ll(message):
     test_res()
+
+
 @bot.callback_query_handler(func=lambda call: call.data in test_win)
 def end(call):
     bot.send_message(chat_id=channel_id,
                      text=f"{text_for_winner} {call.data} {None} Максимальная покупка: {int(int(call.data) * 0.7)}")
+
+
 @bot.message_handler(commands=["start"])
 def start(message):
     global users_bd
     user_id = message.from_user.id
-    # print(user_id)
-    print(message)
     if str(user_id) in contest.stop_list:
         users_bd.set_status(user_id)
         bot.send_message(chat_id=user_id,
@@ -339,7 +351,6 @@ def start(message):
 
 @bot.message_handler(commands=["admin"], func=lambda message: message.from_user.id in admin)
 def command_admin(message):
-    global admin
     user_id = message.from_user.id
     r = bot.send_message(chat_id=user_id,
                          text="Выберите действие",
@@ -363,7 +374,6 @@ def reg(message):
 def reg_wallet(message):
     global users_bd, contest, contest_users
     user_id = message.from_user.id
-    # print(users_bd.get_status_of_last_registration(user_id))
     if str(user_id) in contest.stop_list or message.text in contest.stop_list:
         users_bd.set_status(user_id, False)
         bot.send_message(chat_id=user_id,
@@ -383,6 +393,8 @@ def reg_wallet(message):
                 contest_users += user_id
                 contest_user = contest_users.get_elem(user_id)
                 contest_user.wallet = message.text
+                with open("wallet.txt", "a+") as f:
+                    f.write(f"{contest_user.wallet}\n")
                 contest_user.username = message.from_user.username
                 contest_user.status_contest = user.status_contest
                 bot.edit_message_text(chat_id=user_id,
@@ -536,8 +548,8 @@ def work__admin(message):
                                           text="Пользователь заблокирован",
                                           reply_markup=back_in_admin_panel)
 
-                    check = False
                     break
+
         elif check:
             bot.edit_message_text(chat_id=user_id,
                                   message_id=users_bd.get_message_id(user_id),
@@ -730,7 +742,7 @@ def work_admin(call):
 
         elif flag == 8:
             if new_set.isdigit():
-                try:  # день.месяц.год час
+                try:
                     contest.time_reminder = int(new_set)
                     bot.edit_message_text(chat_id=user_id,
                                           message_id=users_bd.get_message_id(user_id),
@@ -801,7 +813,6 @@ def work_admin(call):
                                   message_id=users_bd.get_message_id(user_id),
                                   text=data_text_for_create_contest[users_bd.get_flag(user_id)],
                                   reply_markup=back_keyboard_in_creating_contest)
-
 
     elif call.data == "change_text":
         bot.edit_message_text(chat_id=user_id,
@@ -912,7 +923,6 @@ def work_admin(call):
         id_wallet = ''
         data = users_bd.data
         for i in data:
-            # print(data[i].__dict__)
             if not data[i].status:
                 id_wallet += f"`{i}` - `{data[i].wallet}` \n"
 
@@ -968,45 +978,50 @@ def end_contest(call):
                      text=f"{text_for_winner} {winner.username}")
 
 
-
-
-
 if __name__ == "__main__":
     print("START")
+
     if contest_proc.p0.is_alive():
         contest_proc.stop_process()
-    contest.time_start_contest = datetime.datetime(year=int(2022),
-                                                   month=int(7),
-                                                   day=int(4),
-                                                   hour=int(15),
-                                                   minute=0)
-
     contest.time_start_registration = datetime.datetime(year=int(2022),
                                                         month=int(7),
-                                                        day=int(4),
-                                                        hour=int(14),
-                                                        minute=30)
-    contest.time_end_contest = datetime.datetime(year=int(2022),
-                                                 month=int(7),
-                                                 day=int(4),
-                                                 hour=int(17),
-                                                 minute=00)
-    contest.time_end_registration = datetime.datetime(year=int(2022),
-                                                      month=int(7),
-                                                      day=int(4),
-                                                      hour=int(16),
-                                                      minute=30)
+                                                        day=int(22),
+                                                        hour=int(13),
+                                                        minute=00)
+
+    contest.time_start_contest = datetime.datetime(year=int(2022),
+                                                   month=int(7),
+                                                   day=int(22),
+                                                   hour=int(14),
+                                                   minute=00)
+
     contest.time_end_for_new_user = datetime.datetime(year=int(2022),
                                                       month=int(7),
-                                                      day=int(4),
-                                                      hour=int(10),
-                                                      minute=00)
-    contest.text_for_new_leader = "{time_start_contest} {time_end_contest} {remaining_time_contest} {remaining_time_registration}"
+                                                      day=int(22),
+                                                      hour=int(14),
+                                                      minute=30)
+
+    contest.time_end_registration = datetime.datetime(year=int(2022),
+                                                      month=int(7),
+                                                      day=int(22),
+                                                      hour=int(14),
+                                                      minute=50)
+
+    contest.time_end_contest = datetime.datetime(year=int(2022),
+                                                 month=int(7),
+                                                 day=int(22),
+                                                 hour=int(15),
+                                                 minute=00)
+    contest.text_for_new_leader = "появился новый лидер {username_leader}"
+    contest.text_final = "Конкурс окончен"
     contest.time_cooldown = 5
-    contest.time_reminder = 10
-    contest.time_inaction = 15
+    contest.time_reminder = 15
+    contest.time_inaction = 20
     contest.text_reminder = "конец конкурса {time_end_contest}"
     contest.text_announcement = "оставшееся время регистрации {remaining_time_registration}"
+    contest.contract_number = "0x10f6f2b97f3ab29583d9d38babf2994df7220c21"
     save_object(contest, 'contest.pkl')
     contest_proc.start_process()
     bot.infinity_polling()
+
+
