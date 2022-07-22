@@ -1,14 +1,11 @@
 import datetime
 from telebot import types
-#from main import bot
+# from main import bot
+from config import *
 
-def channel_sending(text, photo=None, reply_markup=None):
-    # text=text.format(time_start_contest=contest.variables_for_mes("time_start_contest"), time_end_registration=contest.variables_for_mes("time_end_registration"), remaining_time_contest=contest.variables_for_mes("remaining_time_contest"), remaining_time_registration=contest.variables_for_mes("remaining_time_registration"), wallet_leader=contest.variables_for_mes("wallet_leader"), username_leader=contest.variables_for_mes("username_leader"))
-    # if photo==None:
-    #    bot.send_message(chat_id=channel_id, text = text, photo = photo, reply_markup=reply_markup)
-    # else:
-    #    bot.send_photo(chat_id=channel_id, photo=photo, caption=text)
-    pass
+
+
+
 
 class Contest:
     def __init__(self):
@@ -43,13 +40,34 @@ class Contest:
             case "time_end_contest":
                 return self.time_end_contest
             case "remaining_time_contest":
-                return self.time_end_registration - datetime.datetime.now()
+                return str(self.time_end_contest - datetime.datetime.now()).split('.')[0]
             case "remaining_time_registration":
-                return self.time_end_registration - datetime.datetime.now()
+                return str(self.time_end_registration - datetime.datetime.now()).split('.')[0]
             case "wallet_leader":
                 return self.wallet_leader
             case "username_leader":
                 return self.username_leader
+
+    def presenting(self) -> str:
+        text = f"Конкурс выглядит так:\n" \
+               f"номер контракта: {self.contract_number}\n" \
+               f"начало конкурса: {self.time_start_contest}\n" \
+               f"конец конкурса: {self.time_end_contest}\n" \
+               f"время открытия регистрации: {self.time_start_registration}\n" \
+               f"время закрытии регистрации: {self.time_end_registration}\n" \
+               f"время закрытия конкурса от новых участников: " \
+               f"{self.time_end_for_new_user}\n" \
+               f"время бездействия для отправки уведомления: " \
+               f"{self.time_inaction} минут(а)\n" \
+               f"периодичность напоминания о конкурсе: " \
+               f"{self.time_reminder} минут(а)\n" \
+               f"текст анонса: {self.text_announcement}\n" \
+               f"текст финала: {self.text_final}\n" \
+               f"текст отдачи статуса: {self.text_for_new_leader}\n" \
+               f"текст поддержки: {self.text_encouragement}\n" \
+               f"текст напоминания: {self.text_reminder}\n" \
+               f"текст Вы можете изменить в админ панель -> изменить текста"
+        return text
 
 
 class User:
@@ -71,7 +89,6 @@ class Contest_user:
         self.buy = 0
         self.max_buy = 0
         self.sell = 0
-
 
 
 ###Класс нереляционной бд
@@ -129,7 +146,7 @@ class Contest_users(nsql_database):
             if wallet == obj_user.wallet:
                 return i
 
-    def get_elem_for_wallet(self, wallet: str, list_wallet: list) -> Contest_user | object:
+    def get_elem_for_wallet(self, wallet: str, list_wallet: list) -> Contest_user | bool:
         for i in self.data:
             obj_user = self.get_elem(i)
             if wallet == obj_user.wallet and wallet in list_wallet:
@@ -159,9 +176,9 @@ class Contest_users(nsql_database):
     def response_for_admin(self):
         response = "Список лидеров:\n"
         for id in self.leader:
-            leader = self.get_elem(id)
-            response += f"user_id: {id}\nuser_name: {leader.user_name}\nКошелёк: {leader.wallet}\n" \
-                        f"Продано: {leader.sell}\nКуплено: {leader.buy}\nМаксимальная покупка: {leader.max_buy}\n\n"
+            user = self.get_elem(id)
+            response += f"user_id: {id}\nuser_name: {user.username}\nКошелёк: {user.wallet}\n" \
+                        f"Продано: {user.sell}\nКуплено: {user.buy}\nМаксимальная покупка: {user.max_buy}\n\n"
         return response
 
     def keyboard_with_leaders(self):
@@ -239,3 +256,6 @@ class Leader:
         self.sell = sell
         self.buy = buy
         self.total_amount = total_amount
+
+
+
